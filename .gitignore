@@ -1,0 +1,12 @@
+# Ignora todos os arquivos dentro da pasta de vídeos
+bin/data/videos/*
+
+# Opcional: Se você quiser manter a pasta vazia no git, mas ignorar o conteúdo,
+# crie um arquivo .gitkeep dentro dela e adicione esta exceção:
+!bin/data/videos/.gitkeep
+
+# Ignora a pasta de objetos compilados
+obj/
+
+# Ignora configurações do VS Code
+.vscode/

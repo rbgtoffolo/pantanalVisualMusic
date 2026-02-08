@@ -1,0 +1,18 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "${workspaceRoot}/../../../../libs/openFrameworks"
+		},
+		{
+			"path": "${workspaceRoot}/../../../../addons/ofxOpenCv"
+		},
+		{
+			"path": "${workspaceRoot}/../../../../addons/ofxOsc"
+		}
+	],
+	"openFrameworksProjectGeneratorVersion": "0.104.0",
+	"settings": {}
+}
