@@ -3,7 +3,21 @@
 void PersonTracker::setup(int w, int h){
     // Inicializa a câmera
     vidGrabber.setVerbose(true);
-    vidGrabber.setup(w, h);
+    
+    // Lista dispositivos para debug no console
+    vector<ofVideoDevice> devices = vidGrabber.listDevices();
+    for(size_t i = 0; i < devices.size(); i++){
+        if(devices[i].bAvailable){
+            ofLogNotice() << "Device " << devices[i].id << ": " << devices[i].deviceName;
+        }
+    }
+
+    vidGrabber.setDesiredFrameRate(30);
+    vidGrabber.setPixelFormat(OF_PIXELS_RGB);
+
+    if(!vidGrabber.setup(w, h)){
+        ofLogError("PersonTracker") << "Nao foi possivel inicializar a camera!";
+    }
 
     // Aloca memória para as imagens do OpenCV
     colorImg.allocate(w, h);
@@ -18,6 +32,9 @@ void PersonTracker::setup(int w, int h){
 }
 
 void PersonTracker::update(){
+    // Evita o warning se a câmera não tiver sido carregada
+    if(!vidGrabber.isInitialized()) return;
+
     vidGrabber.update();
     
     if (vidGrabber.isFrameNew()){

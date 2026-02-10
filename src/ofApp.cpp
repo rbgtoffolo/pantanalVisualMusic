@@ -2,19 +2,34 @@
 
 //--------------------------------------------------------------
 void ofApp::setup(){
-    videoManager.setup(5.0f);
-    // Exemplo: Iniciar o primeiro vídeo
-    videoManager.changeVideo(0, 0); 
+    // videoManager.setup(5.0f);
+    // // Exemplo: Iniciar o primeiro vídeo
+    // videoManager.changeVideo(0, 0);
+    
+    personTracker.setup(640, 360);
+
+    
+
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
-    videoManager.update();
+    // videoManager.update();
+       personTracker.update();
+    
+    // Iterar sobre as pessoas detectadas
+    for(int i = 0; i < personTracker.getNumPeople(); i++){
+        ofVec2f pos = personTracker.getPersonPosition(i);
+        int id = personTracker.getPersonId(i);
+        
+        ofLog() << "Pessoa ID: " << id << " em " << pos;
+    }
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-    videoManager.draw(0, 0, ofGetWidth(), ofGetHeight());
+    // videoManager.draw(0, 0, ofGetWidth(), ofGetHeight());
+    personTracker.draw(0, 0, 640, 360);
 }
 
 //--------------------------------------------------------------

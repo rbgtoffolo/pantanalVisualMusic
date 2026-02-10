@@ -2,6 +2,7 @@
 
 #include "ofMain.h"
 #include "VideoManager.h"
+#include "PersonTracker.h"
 
 class ofApp : public ofBaseApp{
 
@@ -25,6 +26,7 @@ class ofApp : public ofBaseApp{
 		void gotMessage(ofMessage msg) override;
 
 		VideoManager videoManager;
+		PersonTracker personTracker;
 		
 		
 };

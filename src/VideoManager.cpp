@@ -7,7 +7,8 @@ void VideoManager::setup(float loopFadeDuration){
     dir.allowExt("mov");
     dir.allowExt("avi");
     dir.listDir();
-
+    dir.sort();
+    
     for(int i = 0; i < dir.size(); i++){
         ofVideoPlayer player;
         player.load(dir.getPath(i));
