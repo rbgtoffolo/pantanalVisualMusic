@@ -7,6 +7,7 @@ public:
     void update();
     void draw(float x, float y, float w, float h);
     void changeVideo(int index, float fadeTime);
+    int getVideoCount() const;
 
     std::vector<ofVideoPlayer> videos;
     std::vector<ofVideoPlayer> loopVideos;

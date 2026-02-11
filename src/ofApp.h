@@ -1,8 +1,10 @@
 #pragma once
 
 #include "ofMain.h"
+#include "ofxOsc.h"
 #include "VideoManager.h"
 #include "PersonTracker.h"
+#include "ColorAnalyzer.h"
 
 class ofApp : public ofBaseApp{
 
@@ -25,8 +27,18 @@ class ofApp : public ofBaseApp{
 		void dragEvent(ofDragInfo dragInfo) override;
 		void gotMessage(ofMessage msg) override;
 
+		// void ofApp::sendColorInfo(int index, float duration)
+
 		VideoManager videoManager;
-		PersonTracker personTracker;
+		PersonTracker personTracker; 
+		ColorAnalyzer colorAnalyzer;
+		vector<ColorProfile> currentColors;
+
+		// OSC
+    	ofxOscSender sender;
+		float nextMessageTime;
+		float interval = 1.0;
+
 		
 		
 };

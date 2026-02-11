@@ -134,3 +134,7 @@ void VideoManager::changeVideo(int index, float fadeTime){
         isFading = false;
     }
 }
+
+int VideoManager::getVideoCount() const {
+    return videos.size();
+}
