@@ -33,16 +33,18 @@ class ofApp : public ofBaseApp{
 		ofxPanel gui;
         ofParameter<float> maxAmp;
         ofParameter<float> colorBarSensitivity;
+		ofParameter<float> blurAmount;
         bool showGui; // Variável para controlar a visibilidade
 		
 		// Audio
 		void audioIn(ofSoundBuffer & buffer) override;
 
-		// void ofApp::sendColorInfo(int index, float duration)
+		// Video
 		VideoManager videoManager;
 		PersonTracker personTracker; 
 		bool showVideo = true;
 		bool showWebLines = true;
+		bool showBlur = false;
 
 		// Audio
 		ofSoundStream soundStream;

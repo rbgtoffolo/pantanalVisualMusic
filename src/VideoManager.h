@@ -8,6 +8,8 @@ public:
     void update();
     void draw(float x, float y, float w, float h);
     void changeVideo(int index, float fadeTime);
+    void onWindowResized(int w, int h);
+    void setBlurAmount(float amount);
     void setSpeed(float speed);
     void updateInvert(float amplitude, float startThreshold, float fullThreshold);
     int getVideoCount() const;
@@ -34,6 +36,7 @@ private:
     ofxCvGrayscaleImage grayImage;
     ofxCvGrayscaleImage grayBg;
     ofxCvGrayscaleImage grayDiff;
+    ofxCvColorImage blurImg; // Para o efeito de blur
     ofxCvContourFinder contourFinder;
 
     // FBOs para efeitos de pós-processamento como a inversão gradual
@@ -47,4 +50,5 @@ private:
     bool bLearnBackground = true;
     bool bCvInitialized = false; // Flag de segurança
     float invertAmount = 0.0f; // 0.0 = normal, 1.0 = totalmente invertido
+    float blurAmount = 0.0f;   // Nível do efeito de blur
 };

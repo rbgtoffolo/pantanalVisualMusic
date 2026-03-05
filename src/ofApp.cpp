@@ -35,13 +35,20 @@ void ofApp::setup(){
 
     showGui = true; 
     
-    	gui.setup("Config."); // Nome do painel
-    	gui.add(maxAmp.set("Sensibilidade Geral", 2.5f, 0.1f, 10.0f));
-		gui.add(colorBarSensitivity.set("Sens. Cor Barra", 0.2f, 0.01f, 1.0f));
+    	gui.setup("cfg"); // Nome do painel
+    	gui.add(maxAmp.set("mainSens", 2.5f, 0.1f, 10.0f));
+		gui.add(colorBarSensitivity.set("SensClrBar", 0.2f, 0.01f, 1.0f));
+        gui.add(blurAmount.set("Blr", 0.0f, 0.0f, 50.0f));
+
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
+
+    if (showBlur){
+    videoManager.setBlurAmount(blurAmount);} else {
+        videoManager.setBlurAmount(0.0f);
+    }
 
     videoManager.update();
     noiseLines.update();
@@ -150,6 +157,11 @@ void ofApp::keyPressed(int key){
     if (key == 'w'){
         showWebLines = !showWebLines;
     }
+
+    if (key == 'b'){
+        showBlur = !showBlur;
+    }
+    
 }
 
 //--------------------------------------------------------------
@@ -257,7 +269,7 @@ void ofApp::mouseExited(int x, int y){
 
 //--------------------------------------------------------------
 void ofApp::windowResized(int w, int h){
-
+    videoManager.onWindowResized(w, h);
 }
 
 //--------------------------------------------------------------

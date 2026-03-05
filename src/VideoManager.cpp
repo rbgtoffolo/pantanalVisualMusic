@@ -35,6 +35,7 @@ void VideoManager::setup(int w, int h, float loopFadeDuration){
 }
 
 void VideoManager::update(){
+
     // Atualiza o vídeo atual
     if(currentIndex != -1 && currentIndex < videos.size()){
         videos[currentIndex].update();
@@ -180,6 +181,54 @@ void VideoManager::draw(float x, float y, float w, float h){
     ofPopStyle();
     fboOriginal.end();
 
+    // --- NOVO: Etapa de Blur Gaussiano ---
+    // Se o blur estiver ativo, processamos a imagem contida no FBO.
+    if (blurAmount > 0.5f) { // Um pequeno limiar para evitar processamento desnecessário
+        ofPixels tempPixels;
+        fboOriginal.readToPixels(tempPixels); // Lê os pixels do FBO para a CPU (operação que pode ser lenta)
+
+        if (tempPixels.isAllocated()) {
+            // WORKAROUND: A conversão interna do ofxOpenCv de 4 canais (RGBA do FBO) para 3 canais (BGR da imagem de blur)
+            // pode ser problemática devido a alinhamento de memória (widthStep). Para garantir a conversão correta,
+            // nós a fazemos manualmente para um buffer de pixels de 3 canais antes de passar para o OpenCV.
+
+            // 1. Cria um buffer de pixels com 3 canais (RGB)
+            static ofPixels rgbPixels; // static para evitar realocação a cada frame
+            if (!rgbPixels.isAllocated() || rgbPixels.getWidth() != tempPixels.getWidth() || rgbPixels.getHeight() != tempPixels.getHeight()) {
+                rgbPixels.allocate(tempPixels.getWidth(), tempPixels.getHeight(), OF_PIXELS_RGB);
+            }
+
+            // 2. Copia os dados, descartando o canal Alpha (4o byte)
+            const unsigned char* src = tempPixels.getData();
+            unsigned char* dst = rgbPixels.getData();
+            size_t totalPixels = tempPixels.getWidth() * tempPixels.getHeight();
+            for (size_t i = 0; i < totalPixels; i++) {
+                dst[i * 3]     = src[i * 4];     // R
+                dst[i * 3 + 1] = src[i * 4 + 1]; // G
+                dst[i * 3 + 2] = src[i * 4 + 2]; // B
+            }
+
+            // 3. Agora, define a imagem de blur a partir do buffer de 3 canais, que é um caminho mais seguro.
+            blurImg.setFromPixels(rgbPixels);
+
+            // O método blurGaussian do ofxOpenCv espera um valor ímpar para o raio do blur.
+            // Convertemos o valor do slider para um inteiro ímpar apropriado.
+            int oddBlurAmount = static_cast<int>(blurAmount);
+            if (oddBlurAmount < 1) oddBlurAmount = 1;
+            if (oddBlurAmount % 2 == 0) {
+                oddBlurAmount++;
+            }
+            blurImg.blurGaussian(oddBlurAmount);
+
+            // Redesenha a imagem borrada de volta no FBO original para ser usada nas etapas seguintes
+            fboOriginal.begin();
+            ofClear(0, 0, 0, 0);
+            ofSetColor(255);
+            blurImg.draw(0, 0);
+            fboOriginal.end();
+        }
+    }
+
     // Se não houver inversão, apenas desenha o FBO original na tela.
     if (invertAmount <= 0.0f) {
         ofSetColor(255);
@@ -222,6 +271,18 @@ void VideoManager::draw(float x, float y, float w, float h){
     ofSetColor(255); // Restaura a cor para o padrão, por segurança.
 }
 
+void VideoManager::onWindowResized(int w, int h) {
+    // Re-aloca os FBOs, pois eles dependem do tamanho da janela/tela.
+    fboOriginal.allocate(w, h, GL_RGBA);
+    fboInverted.allocate(w, h, GL_RGBA);
+
+    // A imagem de blur também depende do tamanho da tela.
+    // Limpamos ela para forçar uma realocação na próxima chamada do draw().
+    if (blurImg.bAllocated) {
+        blurImg.clear();
+    }
+}
+
 void VideoManager::changeVideo(int index, float fadeTime){
     if(index < 0 || index >= videos.size()) return;
     if(index == currentIndex && !isFading) return;
@@ -262,6 +323,11 @@ void VideoManager::changeVideo(int index, float fadeTime){
 
 int VideoManager::getVideoCount() const {
     return videos.size();
+}
+
+void VideoManager::setBlurAmount(float amount) {
+    // Usamos ofClamp para garantir que o valor permaneça num intervalo seguro
+    blurAmount = ofClamp(amount, 0.0f, 100.0f); 
 }
 
 void VideoManager::updateInvert(float amplitude, float startThreshold, float fullThreshold) {
