@@ -1,2 +1,5 @@
 ofxOpenCv
 ofxOsc
+ofxFft
+ofxGui
+

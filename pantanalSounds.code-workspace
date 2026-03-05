@@ -11,6 +11,15 @@
 		},
 		{
 			"path": "${workspaceRoot}/../../../../addons/ofxOsc"
+		},
+		{
+			"path": "${workspaceRoot}/../../../../addons/ofxEasing"
+		},
+		{
+			"path": "${workspaceRoot}/../../../../addons/ofxOpenCv"
+		},
+		{
+			"path": "${workspaceRoot}/../../../../addons/ofxOsc"
 		}
 	],
 	"openFrameworksProjectGeneratorVersion": "0.104.0",

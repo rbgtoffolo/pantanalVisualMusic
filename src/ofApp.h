@@ -1,10 +1,11 @@
 #pragma once
 
 #include "ofMain.h"
-#include "ofxOsc.h"
 #include "VideoManager.h"
 #include "PersonTracker.h"
-#include "ColorAnalyzer.h"
+#include "NoiseLines.h"
+#include "ofxFft.h"
+#include "ofxGui.h"
 
 class ofApp : public ofBaseApp{
 
@@ -26,19 +27,34 @@ class ofApp : public ofBaseApp{
 		void windowResized(int w, int h) override;
 		void dragEvent(ofDragInfo dragInfo) override;
 		void gotMessage(ofMessage msg) override;
+		void drawColorBars();
+
+		// GUI
+		ofxPanel gui;
+        ofParameter<float> maxAmp;
+        bool showGui; // Variável para controlar a visibilidade
+		
+		// Audio
+		void audioIn(ofSoundBuffer & buffer) override;
 
 		// void ofApp::sendColorInfo(int index, float duration)
-
 		VideoManager videoManager;
 		PersonTracker personTracker; 
-		ColorAnalyzer colorAnalyzer;
-		vector<ColorProfile> currentColors;
 
-		// OSC
-    	ofxOscSender sender;
-		float nextMessageTime;
-		float interval = 1.0;
+		// Audio
+		ofSoundStream soundStream;
+		float smoothedAmplitude;
+		float convertedAmp;
 
+		ofxFft* fft;
+    	std::vector<float> magnitudes;
+		int bufferSize;
+		int startBin; // Índice do primeiro bin de frequência a ser usado
+		int endBin;   // Índice do último bin de frequência a ser usado
+
+		NoiseLines noiseLines;
 		
-		
+	private:
+		ofSoundBuffer lastInputBuffer;
+		ofMutex audioMutex;
 };

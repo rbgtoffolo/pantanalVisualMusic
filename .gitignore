@@ -7,6 +7,7 @@ bin/data/videos/*
 
 # Ignora a pasta de objetos compilados
 obj/
-
+*.o
+*.appp
 # Ignora configurações do VS Code
 .vscode/
