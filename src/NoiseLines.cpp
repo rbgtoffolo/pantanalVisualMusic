@@ -1,8 +1,7 @@
 #include "NoiseLines.h"
 
 
-void NoiseLines::setup(int lines, float mAmp){
-
+void NoiseLines::setup(int lines){
     nlines.clear();
     timeOffsets.clear();
    for(int i = 0; i < lines; i++) {
@@ -13,14 +12,13 @@ void NoiseLines::setup(int lines, float mAmp){
         // Offset de tempo para cada linha ser única
         timeOffsets.push_back(ofRandom(1000.0f));
     }
-    maxAmpli = mAmp;
 }
 
 void NoiseLines::update(){
 
 }
 
-void NoiseLines::draw(float smoothedAmp){
+void NoiseLines::draw(float smoothedAmp, float currentMaxAmp){
 
     //ofLogNotice() << smoothedAmp;
     ofPushStyle();
@@ -36,11 +34,11 @@ void NoiseLines::draw(float smoothedAmp){
         float offsetX = ofMap(ofNoise(noiseInput), 0, 1, -smoothedAmp*255, smoothedAmp * 255);
         float alphaNoise = ofNoise(noiseInput * 0.5 + 1000); // Offset diferente para não sincronizar com movimento
         
-        float globalAlpha = ofMap(smoothedAmp, 0.0f, maxAmpli, 0.0f, 255, true);
+        float globalAlpha = ofMap(smoothedAmp, 0.0f, currentMaxAmp, 0.0f, 255, true);
         // As linhas são pretas para contrastar com os vídeos.
         ofSetColor(0, 0, 0, ofMap(alphaNoise, 0, 1, 0, globalAlpha));
         
-        ofSetLineWidth(ofMap(smoothedAmp, 0.0f, 1.0f, 0.0f, 20.0f, true));
+        ofSetLineWidth(ofMap(smoothedAmp, 0.0f, currentMaxAmp, 0.0f, 20.0f, true));
 
         float xFinal = nlines[i].x + offsetX;
         ofDrawLine(xFinal, 0, xFinal, ofGetHeight());

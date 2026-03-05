@@ -3,9 +3,8 @@
 //--------------------------------------------------------------
 void ofApp::setup(){
     
-
-   
-    noiseLines.setup(50, maxAmp);
+    // O parâmetro maxAmp foi removido do setup, pois será passado no draw()
+    noiseLines.setup(50);
     bufferSize = 256;
 
     videoManager.setup(ofGetWidth(), ofGetHeight(), 5.0f);
@@ -28,7 +27,7 @@ void ofApp::setup(){
     // Calcula os bins (faixas de frequência) que correspondem ao intervalo de 20-16000Hz
     float frequencyPerBin = (float)settings.sampleRate / fft->getSignalSize();
     startBin = ceil(20.0f / frequencyPerBin);
-    endBin = floor(16000.0f / frequencyPerBin);
+    endBin = floor(12000.0f / frequencyPerBin);
     // Garante que os bins estejam dentro dos limites do vetor de magnitudes
     endBin = std::min(endBin, (int)magnitudes.size() - 1);
     startBin = std::max(startBin, 0);
@@ -37,8 +36,8 @@ void ofApp::setup(){
     showGui = true; 
     
     	gui.setup("Config."); // Nome do painel
-    	// setup(nome, valor inicial, min, max)
-    	gui.add(maxAmp.set("maxAmp", 0.8f, 0.0f, 1.5f));
+    	gui.add(maxAmp.set("Sensibilidade Geral", 2.5f, 0.1f, 10.0f));
+		gui.add(colorBarSensitivity.set("Sens. Cor Barra", 0.2f, 0.01f, 1.0f));
 }
 
 //--------------------------------------------------------------
@@ -47,7 +46,10 @@ void ofApp::update(){
     videoManager.update();
     noiseLines.update();
  
-    videoManager.updateInvert(smoothedAmplitude, 0.05f, 0.5f);
+    // Usa o maxAmp da GUI como o limite máximo para o efeito de inversão
+    // O limiar inicial (startThreshold) foi alterado de um valor fixo (0.05f)
+    // para uma porcentagem de maxAmp, tornando o início do efeito mais adaptável.
+    videoManager.updateInvert(smoothedAmplitude, maxAmp * 0.1f, maxAmp);
 }
 
 //--------------------------------------------------------------
@@ -55,8 +57,10 @@ void ofApp::draw(){
    
 
     ofBackground(0);
+    if(showVideo){
     videoManager.draw(0, 0, ofGetWidth(), ofGetHeight());
-
+}
+    if (showWebLines){
     auto& lines = videoManager.getWaveLines();
     ofPushStyle(); 
         ofNoFill(); // Garante que as linhas não sejam preenchidas
@@ -94,10 +98,17 @@ void ofApp::draw(){
             }
         }
     ofPopStyle();
-
+    }
     // Vertical Lines
-    noiseLines.draw(smoothedAmplitude);
+    // Passa o maxAmp da GUI a cada frame para garantir que a sensibilidade seja atualizada
+
+    if (showNoiseLines) {
+    noiseLines.draw(smoothedAmplitude, maxAmp);
+    }
+
+    if(showColorBar){
     drawColorBars();
+    }
 
      if (showGui) {
         gui.draw();
@@ -114,11 +125,30 @@ void ofApp::exit(){
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
+    if (key != 'h'){
     int newVideo = (int)ofRandom(0, videoManager.getVideoCount());
     videoManager.changeVideo(newVideo, 5.0f);
-    
+    }
+
     if (key == 'h') {
         showGui = !showGui;
+    }
+
+    if (key == 'n') {
+        showNoiseLines = !showNoiseLines;
+    }
+
+    if (key == 'v') {
+        showVideo = !showVideo;
+
+    }
+
+    if (key == 'c') {
+        showColorBar = !showColorBar;
+    }
+
+    if (key == 'w'){
+        showWebLines = !showWebLines;
     }
 }
 
@@ -173,7 +203,7 @@ void ofApp::drawColorBars(){
 
         ofColor c;
         
-        float intensity = ofMap(magnitudes[binIndex], 0.0f, 0.2f, 0, 255, true);
+        float intensity = ofMap(magnitudes[binIndex], 0.0f, colorBarSensitivity, 0, 255, true);
 
         // O Hue agora é mapeado para o número de barras visíveis, para manter o arco-íris completo
         c.setHsb(ofMap(i, 0, numBars, 0, 255), 255, 255);

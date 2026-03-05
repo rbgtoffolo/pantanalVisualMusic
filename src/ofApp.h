@@ -32,6 +32,7 @@ class ofApp : public ofBaseApp{
 		// GUI
 		ofxPanel gui;
         ofParameter<float> maxAmp;
+        ofParameter<float> colorBarSensitivity;
         bool showGui; // Variável para controlar a visibilidade
 		
 		// Audio
@@ -40,6 +41,8 @@ class ofApp : public ofBaseApp{
 		// void ofApp::sendColorInfo(int index, float duration)
 		VideoManager videoManager;
 		PersonTracker personTracker; 
+		bool showVideo = true;
+		bool showWebLines = true;
 
 		// Audio
 		ofSoundStream soundStream;
@@ -53,7 +56,9 @@ class ofApp : public ofBaseApp{
 		int endBin;   // Índice do último bin de frequência a ser usado
 
 		NoiseLines noiseLines;
+		bool showNoiseLines = true;
 		
+		bool showColorBar = true;
 	private:
 		ofSoundBuffer lastInputBuffer;
 		ofMutex audioMutex;
