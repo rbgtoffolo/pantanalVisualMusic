@@ -34,7 +34,7 @@ class ofApp : public ofBaseApp{
         ofParameter<float> maxAmp;
         ofParameter<float> colorBarSensitivity;
 		ofParameter<float> blurAmount;
-        bool showGui; // Variável para controlar a visibilidade
+        bool showGui; 
 		
 		// Audio
 		void audioIn(ofSoundBuffer & buffer) override;
@@ -42,8 +42,10 @@ class ofApp : public ofBaseApp{
 		// Video
 		VideoManager videoManager;
 		PersonTracker personTracker; 
-		bool showVideo = true;
-		bool showWebLines = true;
+		bool isVideoLayerVisible = true;
+		float videoLayerAlpha = 1.0f;
+		float videoLayerFadeDuration = 5.0f; // Duração do fade da camada de vídeo em segundos
+		bool showWebLines = true; 
 		bool showBlur = false;
 
 		// Audio
@@ -54,8 +56,8 @@ class ofApp : public ofBaseApp{
 		ofxFft* fft;
     	std::vector<float> magnitudes;
 		int bufferSize;
-		int startBin; // Índice do primeiro bin de frequência a ser usado
-		int endBin;   // Índice do último bin de frequência a ser usado
+		int startBin; 
+		int endBin;  
 
 		NoiseLines noiseLines;
 		bool showNoiseLines = true;

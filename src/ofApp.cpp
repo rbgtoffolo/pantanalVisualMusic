@@ -3,7 +3,6 @@
 //--------------------------------------------------------------
 void ofApp::setup(){
     
-    // O parâmetro maxAmp foi removido do setup, pois será passado no draw()
     noiseLines.setup(50);
     bufferSize = 256;
 
@@ -24,18 +23,17 @@ void ofApp::setup(){
     settings.bufferSize = bufferSize;
     soundStream.setup(settings);
 
-    // Calcula os bins (faixas de frequência) que correspondem ao intervalo de 20-16000Hz
     float frequencyPerBin = (float)settings.sampleRate / fft->getSignalSize();
     startBin = ceil(20.0f / frequencyPerBin);
     endBin = floor(12000.0f / frequencyPerBin);
-    // Garante que os bins estejam dentro dos limites do vetor de magnitudes
+
     endBin = std::min(endBin, (int)magnitudes.size() - 1);
     startBin = std::max(startBin, 0);
 
 
     showGui = true; 
     
-    	gui.setup("cfg"); // Nome do painel
+    	gui.setup("cfg"); 
     	gui.add(maxAmp.set("mainSens", 2.5f, 0.1f, 10.0f));
 		gui.add(colorBarSensitivity.set("SensClrBar", 0.2f, 0.01f, 1.0f));
         gui.add(blurAmount.set("Blr", 0.0f, 0.0f, 50.0f));
@@ -50,27 +48,33 @@ void ofApp::update(){
         videoManager.setBlurAmount(0.0f);
     }
 
+    // Lógica para o fade in/out da camada de vídeo (tecla 'v')
+    // A cada frame, ajustamos a opacidade para chegar ao estado desejado (visível/invisível)
+    if (videoLayerFadeDuration <= 0) videoLayerFadeDuration = 0.1f; // Evita divisão por zero
+    float fadeSpeed = (1.0f / videoLayerFadeDuration) * ofGetLastFrameTime();
+    if (isVideoLayerVisible && videoLayerAlpha < 1.0f) {
+        videoLayerAlpha = std::min(1.0f, videoLayerAlpha + fadeSpeed);
+    } else if (!isVideoLayerVisible && videoLayerAlpha > 0.0f) {
+        videoLayerAlpha = std::max(0.0f, videoLayerAlpha - fadeSpeed);
+    }
+
     videoManager.update();
-    noiseLines.update();
- 
-    // Usa o maxAmp da GUI como o limite máximo para o efeito de inversão
-    // O limiar inicial (startThreshold) foi alterado de um valor fixo (0.05f)
-    // para uma porcentagem de maxAmp, tornando o início do efeito mais adaptável.
     videoManager.updateInvert(smoothedAmplitude, maxAmp * 0.1f, maxAmp);
+    noiseLines.update();
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
    
-
     ofBackground(0);
-    if(showVideo){
-    videoManager.draw(0, 0, ofGetWidth(), ofGetHeight());
-}
+    // Desenha a camada de vídeo, passando o valor de alpha calculado diretamente para o VideoManager.
+    // O VideoManager agora é responsável por aplicar esta opacidade final.
+    videoManager.draw(0, 0, ofGetWidth(), ofGetHeight(), videoLayerAlpha);
+
     if (showWebLines){
     auto& lines = videoManager.getWaveLines();
     ofPushStyle(); 
-        ofNoFill(); // Garante que as linhas não sejam preenchidas
+        ofNoFill(); 
 
         // Cor dos contornos de movimento
         ofColor c;
@@ -80,18 +84,15 @@ void ofApp::draw(){
             line.draw(); 
         }
 
-        // 2. Coleta pontos aleatórios nas ondas para criar as teias
         std::vector<glm::vec3> connectionPoints;
         for (const auto& line : lines) {
             for (const auto& pt : line.getVertices()) {
-                // A mesma chance de 2% seleciona pontos para a teia
                 if (ofRandom(1.0) > 0.98) { 
                     connectionPoints.push_back(pt);
                 }
             }
         }
 
-        // 3. Desenha as teias conectando os pontos coletados
         if (connectionPoints.size() > 1) {
             // Cor para as linhas da teia
              ofColor c;
@@ -106,8 +107,9 @@ void ofApp::draw(){
         }
     ofPopStyle();
     }
+
+
     // Vertical Lines
-    // Passa o maxAmp da GUI a cada frame para garantir que a sensibilidade seja atualizada
 
     if (showNoiseLines) {
     noiseLines.draw(smoothedAmplitude, maxAmp);
@@ -132,34 +134,27 @@ void ofApp::exit(){
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
-    if (key != 'h'){
-    int newVideo = (int)ofRandom(0, videoManager.getVideoCount());
-    videoManager.changeVideo(newVideo, 5.0f);
-    }
-
     if (key == 'h') {
         showGui = !showGui;
-    }
-
-    if (key == 'n') {
+    } else if (key == 'n') {
         showNoiseLines = !showNoiseLines;
-    }
-
-    if (key == 'v') {
-        showVideo = !showVideo;
-
-    }
-
-    if (key == 'c') {
+    } else if (key == 'v') {
+        isVideoLayerVisible = !isVideoLayerVisible;
+    } else if (key == 'c') {
         showColorBar = !showColorBar;
-    }
-
-    if (key == 'w'){
+    } else if (key == 'w'){
         showWebLines = !showWebLines;
-    }
-
-    if (key == 'b'){
+    } else if (key == 'b'){
         showBlur = !showBlur;
+    } else if (key == ' ') {
+        if (videoManager.getVideoCount() > 1) {
+            int newVideoIndex = videoManager.currentIndex;
+            // Procura por um novo índice até encontrar um diferente
+            while (newVideoIndex == videoManager.currentIndex) {
+                newVideoIndex = (int)ofRandom(videoManager.getVideoCount());
+            }
+            videoManager.changeVideo(newVideoIndex, 5.0f);
+        }
     }
     
 }
@@ -172,16 +167,12 @@ void ofApp::keyReleased(int key){
 void ofApp::audioIn(ofSoundBuffer & buffer){
 
     fft->setSignal(buffer.getBuffer());
-    
-    // 2. Recuperamos as magnitudes calculadas
     float* curMagnitudes = fft->getAmplitude();
     
-    // Copia todas as magnitudes do resultado do FFT para o nosso vetor
     for(int i = 0; i < magnitudes.size(); i++) {
         magnitudes[i] = curMagnitudes[i];
     }
 
-    // Calcula a amplitude média (volume geral) usando apenas as bandas dentro do nosso intervalo de interesse
     float totalMagnitudeInRange = 0.0f;
     int numBinsInRange = endBin - startBin + 1;
 
@@ -217,13 +208,11 @@ void ofApp::drawColorBars(){
         
         float intensity = ofMap(magnitudes[binIndex], 0.0f, colorBarSensitivity, 0, 255, true);
 
-        // O Hue agora é mapeado para o número de barras visíveis, para manter o arco-íris completo
         c.setHsb(ofMap(i, 0, numBars, 0, 255), 255, 255);
         
         c.a = intensity;
         
         ofSetColor(c);
-        // Desenha a barra na sua nova posição e largura. O +1 ajuda a evitar falhas visuais entre as barras.
         ofDrawRectangle(i * barWidth, 0, barWidth + 1, ofGetHeight());
     }
     ofPopStyle();

@@ -6,7 +6,7 @@ class VideoManager {
 public:
     void setup(int w, int h, float loopFadeDuration = 0.0f);
     void update();
-    void draw(float x, float y, float w, float h);
+    void draw(float x, float y, float w, float h, float alpha = 1.0f);
     void changeVideo(int index, float fadeTime);
     void onWindowResized(int w, int h);
     void setBlurAmount(float amount);
@@ -15,10 +15,8 @@ public:
     int getVideoCount() const;
     const ofPixels& getFramePixels();
     
-    // Getter para os grafismos
     const std::vector<ofPolyline>& getWaveLines() const { return waveLines; }
 
-    // Membros públicos originais (mantidos para não quebrar seu acesso externo)
     std::vector<ofVideoPlayer> videos;
     std::vector<ofVideoPlayer> loopVideos;
     int currentIndex = -1;
@@ -48,7 +46,7 @@ private:
     int width, height;
     float thresholdValue = 30.0;
     bool bLearnBackground = true;
-    bool bCvInitialized = false; // Flag de segurança
-    float invertAmount = 0.0f; // 0.0 = normal, 1.0 = totalmente invertido
-    float blurAmount = 0.0f;   // Nível do efeito de blur
+    bool bCvInitialized = false; 
+    float invertAmount = 0.0f; 
+    float blurAmount = 0.0f;   
 };

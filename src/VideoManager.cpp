@@ -1,19 +1,19 @@
 #include "VideoManager.h"
 
 void VideoManager::setup(int w, int h, float loopFadeDuration){
-    // 1. Lógica do antigo setupCV: Inicializa os buffers do OpenCV
+  
     width = w;
     height = h;
     colorImg.allocate(w, h);
     grayImage.allocate(w, h);
     grayBg.allocate(w, h);
     grayDiff.allocate(w, h);
-    // Aloca os FBOs com canal alfa (GL_RGBA) para suportar o crossfade e efeitos de transparência
+
     fboOriginal.allocate(w, h, GL_RGBA);
     fboInverted.allocate(w, h, GL_RGBA);
     bCvInitialized = true;
 
-    // 2. Lógica do antigo setup: Carrega os vídeos do diretório
+
     loopCrossfadeDuration = loopFadeDuration;
     ofDirectory dir("videos");
     dir.allowExt("mp4");
@@ -136,11 +136,9 @@ void VideoManager::update(){
     }
 }
 
-void VideoManager::draw(float x, float y, float w, float h){
+void VideoManager::draw(float x, float y, float w, float h, float alpha){
     if(currentIndex == -1 || currentIndex >= videos.size()) return;
 
-    // Helper lambda to contain the complex video drawing logic.
-    // This allows us to reuse the drawing logic for both normal and inverted rendering.
     auto drawCurrentVideoState = [&](){
         if (isFading && nextIndex != -1) {
             float pct = ofClamp(fadeTimer / fadeDuration, 0.0, 1.0);
@@ -164,41 +162,39 @@ void VideoManager::draw(float x, float y, float w, float h){
             ofSetColor(255, 255 * pct);
             loopVideos[currentIndex].draw(x, y, w, h);
         } else {
-            ofSetColor(255); // Garante que o vídeo seja desenhado com opacidade total
+            ofSetColor(255);
             videos[currentIndex].draw(x, y, w, h);
         }
     };
 
-    // --- Pass 1: Desenha o estado atual do vídeo (com fades) para o FBO 'original'.
     fboOriginal.begin();
     ofClear(0, 0, 0, 0); // Limpa o FBO
-    // O cross-fade (tanto de loop quanto de troca de vídeo) depende do alpha blending.
-    // Como outras partes do código (ex: efeito de inversão) podem desabilitar o blending,
-    // garantimos que ele esteja ativo aqui e restauramos o estado anterior depois.
+
     ofPushStyle();
-    ofEnableBlendMode(OF_BLENDMODE_ALPHA);
+    // Para o crossfade entre vídeos (isFading), usamos o modo aditivo (ADD)
+    // para evitar o "dip" de brilho que acontece com o alpha blending normal.
+    if (isFading) {
+        ofEnableBlendMode(OF_BLENDMODE_ADD);
+    } else {
+        ofEnableBlendMode(OF_BLENDMODE_ALPHA);
+    }
     drawCurrentVideoState();
     ofPopStyle();
     fboOriginal.end();
 
     // --- NOVO: Etapa de Blur Gaussiano ---
-    // Se o blur estiver ativo, processamos a imagem contida no FBO.
-    if (blurAmount > 0.5f) { // Um pequeno limiar para evitar processamento desnecessário
+   
+    if (blurAmount > 0.5f) { 
         ofPixels tempPixels;
-        fboOriginal.readToPixels(tempPixels); // Lê os pixels do FBO para a CPU (operação que pode ser lenta)
+        fboOriginal.readToPixels(tempPixels); 
 
         if (tempPixels.isAllocated()) {
-            // WORKAROUND: A conversão interna do ofxOpenCv de 4 canais (RGBA do FBO) para 3 canais (BGR da imagem de blur)
-            // pode ser problemática devido a alinhamento de memória (widthStep). Para garantir a conversão correta,
-            // nós a fazemos manualmente para um buffer de pixels de 3 canais antes de passar para o OpenCV.
-
-            // 1. Cria um buffer de pixels com 3 canais (RGB)
+           
             static ofPixels rgbPixels; // static para evitar realocação a cada frame
             if (!rgbPixels.isAllocated() || rgbPixels.getWidth() != tempPixels.getWidth() || rgbPixels.getHeight() != tempPixels.getHeight()) {
                 rgbPixels.allocate(tempPixels.getWidth(), tempPixels.getHeight(), OF_PIXELS_RGB);
             }
 
-            // 2. Copia os dados, descartando o canal Alpha (4o byte)
             const unsigned char* src = tempPixels.getData();
             unsigned char* dst = rgbPixels.getData();
             size_t totalPixels = tempPixels.getWidth() * tempPixels.getHeight();
@@ -208,11 +204,8 @@ void VideoManager::draw(float x, float y, float w, float h){
                 dst[i * 3 + 2] = src[i * 4 + 2]; // B
             }
 
-            // 3. Agora, define a imagem de blur a partir do buffer de 3 canais, que é um caminho mais seguro.
             blurImg.setFromPixels(rgbPixels);
 
-            // O método blurGaussian do ofxOpenCv espera um valor ímpar para o raio do blur.
-            // Convertemos o valor do slider para um inteiro ímpar apropriado.
             int oddBlurAmount = static_cast<int>(blurAmount);
             if (oddBlurAmount < 1) oddBlurAmount = 1;
             if (oddBlurAmount % 2 == 0) {
@@ -220,64 +213,57 @@ void VideoManager::draw(float x, float y, float w, float h){
             }
             blurImg.blurGaussian(oddBlurAmount);
 
-            // Redesenha a imagem borrada de volta no FBO original para ser usada nas etapas seguintes
             fboOriginal.begin();
             ofClear(0, 0, 0, 0);
+            ofPushStyle();
             ofSetColor(255);
             blurImg.draw(0, 0);
+            ofPopStyle();
             fboOriginal.end();
         }
     }
 
-    // Se não houver inversão, apenas desenha o FBO original na tela.
-    if (invertAmount <= 0.0f) {
-        ofSetColor(255);
-        fboOriginal.draw(x, y, w, h);
-    } else {
-        // --- Pass 2: Cria a versão invertida da imagem no FBO 'invertido'.
+    // Se houver efeito de inversão, o preparamos e o mesclamos de volta no FBO original
+    if (invertAmount > 0.0f) {
         fboInverted.begin();
         ofClear(0, 0, 0, 0);
         ofPushStyle();
-        // A fórmula da inversão é: Branco - ImagemOriginal
-        // 1. Pinta o fundo de branco.
+
         ofSetColor(255);
         ofDrawRectangle(0, 0, fboInverted.getWidth(), fboInverted.getHeight());
-        // 2. Subtrai a imagem original.
-        // Usamos GL diretamente para ter controle sobre o canal alfa.
-        // A meta é: RGB = Branco - ImagemOriginal, Alpha = 255 (opaco).
-        // O OF_BLENDMODE_SUBTRACT padrão estava zerando o canal alfa do FBO invertido
-        // após a mudança para GL_RGBA, tornando o efeito invisível.
+
         glEnable(GL_BLEND);
-        // Para RGB: Dst - Src. Para Alpha: Dst + 0 = Dst (preserva o alfa opaco do retângulo branco).
         glBlendEquationSeparate(GL_FUNC_REVERSE_SUBTRACT, GL_FUNC_ADD);
         glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ZERO, GL_ONE);
 
         fboOriginal.draw(0, 0);
-        ofPopStyle(); // Restaura blend mode e cor
+        ofPopStyle();
         fboInverted.end();
 
-        // --- Pass 3: Mistura o FBO original e o invertido na tela.
-        ofSetColor(255);
-        // 1. Desenha o vídeo original com opacidade total.
-        fboOriginal.draw(x, y, w, h);
-        // 2. Desenha o vídeo invertido por cima, com uma transparência
-        // controlada pelo `invertAmount`. Isso cria o efeito de crossfade.
+        // Agora, mescla o efeito de inversão de volta no FBO original
+        fboOriginal.begin();
+        ofPushStyle();
         ofEnableBlendMode(OF_BLENDMODE_ALPHA);
         ofSetColor(255, 255 * invertAmount);
-        fboInverted.draw(x, y, w, h);
+        fboInverted.draw(0, 0);
         ofDisableBlendMode();
+        ofPopStyle();
+        fboOriginal.end();
     }
 
-    ofSetColor(255); // Restaura a cor para o padrão, por segurança.
+    // Finalmente, desenha o FBO original, que agora contém todos os efeitos (vídeo, blur, inversão).
+    // Usamos o valor de 'alpha' passado para a função para controlar a opacidade final.
+    ofPushStyle();
+    ofEnableAlphaBlending();
+    ofSetColor(255, 255, 255, 255 * alpha);
+    fboOriginal.draw(x, y, w, h);
+    ofPopStyle();
 }
 
 void VideoManager::onWindowResized(int w, int h) {
-    // Re-aloca os FBOs, pois eles dependem do tamanho da janela/tela.
     fboOriginal.allocate(w, h, GL_RGBA);
     fboInverted.allocate(w, h, GL_RGBA);
 
-    // A imagem de blur também depende do tamanho da tela.
-    // Limpamos ela para forçar uma realocação na próxima chamada do draw().
     if (blurImg.bAllocated) {
         blurImg.clear();
     }
@@ -326,7 +312,6 @@ int VideoManager::getVideoCount() const {
 }
 
 void VideoManager::setBlurAmount(float amount) {
-    // Usamos ofClamp para garantir que o valor permaneça num intervalo seguro
     blurAmount = ofClamp(amount, 0.0f, 100.0f); 
 }
 
@@ -337,12 +322,10 @@ void VideoManager::updateInvert(float amplitude, float startThreshold, float ful
 void VideoManager::setSpeed(float speed) {
     if (currentIndex != -1 && currentIndex < videos.size()) {
         videos[currentIndex].setSpeed(speed);
-        // Garante que o vídeo de loop tenha a mesma velocidade para evitar dessincronia
         if (currentIndex < loopVideos.size()) {
             loopVideos[currentIndex].setSpeed(speed);
         }
     }
-    // Se estiver em transição, ajusta também o próximo vídeo para o fade ficar correto
     if (isFading && nextIndex != -1 && nextIndex < videos.size()) {
         videos[nextIndex].setSpeed(speed);
     }
@@ -376,12 +359,10 @@ const ofPixels& VideoManager::getFramePixels() {
         }
 
         if (p1->isLoaded() && p2->isLoaded()) {
-            // Aloca buffer de mistura se necessário
             if (!blendedPixels.isAllocated() || blendedPixels.getWidth() != p1->getWidth() || blendedPixels.getHeight() != p1->getHeight()) {
                 blendedPixels.allocate(p1->getWidth(), p1->getHeight(), OF_PIXELS_RGB);
             }
 
-            // Verifica dimensões
             if (p1->getWidth() == p2->getWidth() && p1->getHeight() == p2->getHeight()) {
                 const ofPixels& pix1 = p1->getPixels();
                 const ofPixels& pix2 = p2->getPixels();
@@ -402,6 +383,5 @@ const ofPixels& VideoManager::getFramePixels() {
         }
     }
 
-    // Se não houver fade ou falhar a mistura, retorna o frame atual direto
     return videos[currentIndex].getPixels();
 }
